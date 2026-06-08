@@ -1,42 +1,72 @@
 import os
 import shutil
+from flask import Flask, render_template_string, request
+
+app = Flask(__name__)
 
 
-folder = input("Enter the folder path to organize: ").strip()
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple File Organizer</title>
+</head>
+<body style="font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px;">
+    <h2>📁 Simple File Organizer</h2>
+    <p>Enter a folder path to sort its files instantly.</p>
+    
+    <form method="POST">
+        <input type="text" name="folder_path" placeholder="Paste folder path here" style="width: 100%; padding: 10px; margin-bottom: 10px;" required>
+        <button type="submit" style="padding: 10px 20px; background-color: #007BFF; color: white; border: none; cursor: pointer; width: 100%;">Organize Now</button>
+    </form>
+
+    {% if message %}
+        <p style="margin-top: 20px; color: {% if 'Error' in message %}red{% else %}green{% endif %}; font-weight: bold;">
+            {{ message }}
+        </p>
+    {% endif %}
+</body>
+</html>
+"""
 
 
-if not os.path.exists(folder):
-    print("Folder not found!")
-else:
-    print(f"\nOrganizing: {folder}\n")
+@app.route("/", methods=["GET", "POST"])
+def home():
+    message = ""
 
-    for f in os.listdir(folder):
-
+    if request.method == "POST":
        
-        if os.path.isdir(os.path.join(folder, f)):
-            continue
+        folder = request.form.get("folder_path").strip()
 
       
-        if f.endswith(".jpg") or f.endswith(".jpeg") or f.endswith(".png") or f.endswith(".gif"):
-            category = "Images"
-        elif f.endswith(".pdf") or f.endswith(".docx") or f.endswith(".txt") or f.endswith(".doc"):
-            category = "Documents"
-        elif f.endswith(".mp4") or f.endswith(".avi") or f.endswith(".mkv") or f.endswith(".mov"):
-            category = "Videos"
-        elif f.endswith(".mp3") or f.endswith(".wav") or f.endswith(".aac"):
-            category = "Audio"
-        elif f.endswith(".zip") or f.endswith(".rar") or f.endswith(".tar"):
-            category = "Zipped Files"
-        elif f.endswith(".py") or f.endswith(".js") or f.endswith(".html") or f.endswith(".css"):
-            category = "Code"
+        if os.path.exists(folder):
+         
+            for file in os.listdir(folder):
+                file_path = os.path.join(folder, file)
+
+             
+                if os.path.isdir(file_path):
+                    continue
+
+                if file.lower().endswith((".jpg", ".png", ".jpeg", ".gif")):
+                    category = "Images"
+                elif file.lower().endswith((".pdf", ".docx", ".txt", ".xlsx")):
+                    category = "Documents"
+                else:
+                    category = "Others"
+
+                
+                target_folder = os.path.join(folder, category)
+                os.makedirs(target_folder, exist_ok=True)
+
+                shutil.move(file_path, os.path.join(target_folder, file))
+
+            message = "Success! Your files have been sorted."
         else:
-            category = "Others"
+            message = "Error: That folder path does not exist."
 
-       
-        destination = os.path.join(folder, category)
-        os.makedirs(destination, exist_ok=True)
+    return render_template_string(HTML_TEMPLATE, message=message)
 
-        shutil.move(os.path.join(folder, f), os.path.join(destination, f))
-        print(f"Moved: {f}  →  {category}/")
 
-    print("\nDone! All files are organized.")
+if __name__ == "__main__":
+    app.run(debug=True)
